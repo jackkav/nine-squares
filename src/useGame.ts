@@ -10,6 +10,7 @@ import {
   writeLastSeen,
 } from './offlineProgress';
 import { computeOpponentMove } from './opponent';
+import { loadSave, writeSave, type PersistedState } from './persistence';
 import { createRng, type Rng } from './prng';
 import { UPGRADES } from './upgrades';
 
@@ -63,6 +64,14 @@ function applyMove(state: GameState, index: number, rng: Rng): GameState {
 export function useGame(seed: string) {
   const [rng] = useState(() => createRng(seed));
   const [state, setState] = useState<GameState>(() => {
+    // A persisted save is the source of truth once one exists — debug
+    // params only seed a genuinely fresh run (see the D8 commit for why:
+    // otherwise reloading a URL with ?echoes= would stomp real progress).
+    const save = loadSave();
+    if (save) {
+      return { ...save, status: '', offlineSummary: null };
+    }
+
     const search = window.location.search;
     const loopCount = getDebugNumberParam(search, 'loop', 0);
     const size = getDebugNumberParam(search, 'board', DEFAULT_BOARD_SIZE);
@@ -87,6 +96,23 @@ export function useGame(seed: string) {
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  // Persists on every change. `status` and `offlineSummary` are
+  // deliberately excluded: they're transient, session-scoped notices, not
+  // durable progress — persisting offlineSummary in particular would make
+  // the "while you were away" banner reappear on every reload instead of
+  // just the one after a genuine absence.
+  useEffect(() => {
+    const persisted: PersistedState = {
+      cells: state.cells,
+      size: state.size,
+      loopCount: state.loopCount,
+      echoes: state.echoes,
+      upgrades: state.upgrades,
+      fragments: state.fragments,
+    };
+    writeSave(persisted);
+  }, [state.cells, state.size, state.loopCount, state.echoes, state.upgrades, state.fragments]);
 
   // setState here is called with an already-computed value, never a
   // functional updater — see the note on applyMove.
