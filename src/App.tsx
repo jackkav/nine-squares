@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { FRAGMENTS } from './fragments';
 import { getSeedFromLocation } from './prng';
 import { UPGRADES } from './upgrades';
@@ -15,9 +15,12 @@ function App() {
     upgrades,
     fragments,
     offlineSummary,
+    metaCurrency,
     playCell,
     purchaseUpgrade,
+    prestige,
   } = useGame(seed);
+  const [confirmingPrestige, setConfirmingPrestige] = useState(false);
 
   return (
     <main>
@@ -28,6 +31,9 @@ function App() {
       </p>
       <p data-testid="echo-count-label">
         Echoes <span data-testid="echo-count">{echoes}</span>
+      </p>
+      <p data-testid="meta-currency-label">
+        Sparks <span data-testid="meta-currency">{metaCurrency}</span>
       </p>
       <p data-testid="status">{status}</p>
       <div
@@ -76,6 +82,30 @@ function App() {
           );
         })}
       </ul>
+      <div data-testid="prestige">
+        {!confirmingPrestige && (
+          <button data-testid="prestige-button" onClick={() => setConfirmingPrestige(true)}>
+            Let go
+          </button>
+        )}
+        {confirmingPrestige && (
+          <>
+            <p>Reset echoes, upgrades, and the board for a permanent yield multiplier?</p>
+            <button
+              data-testid="prestige-confirm"
+              onClick={() => {
+                prestige();
+                setConfirmingPrestige(false);
+              }}
+            >
+              Confirm
+            </button>
+            <button data-testid="prestige-cancel" onClick={() => setConfirmingPrestige(false)}>
+              Cancel
+            </button>
+          </>
+        )}
+      </div>
     </main>
   );
 }

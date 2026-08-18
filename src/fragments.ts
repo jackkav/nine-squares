@@ -20,3 +20,15 @@ export const FRAGMENTS: FragmentDef[] = [
 export function fragmentsForLoopCount(loopCount: number): string[] {
   return FRAGMENTS.filter((f) => f.threshold <= loopCount).map((f) => f.id);
 }
+
+/**
+ * Unions already-unlocked fragments with whatever the current loop count
+ * newly qualifies for. Unlike fragmentsForLoopCount, this never *removes*
+ * anything already unlocked — needed because prestige resets loopCount to
+ * 0 while fragments (the story) are meant to survive that reset.
+ */
+export function mergeFragments(unlocked: string[], loopCount: number): string[] {
+  const set = new Set(unlocked);
+  for (const id of fragmentsForLoopCount(loopCount)) set.add(id);
+  return FRAGMENTS.filter((f) => set.has(f.id)).map((f) => f.id);
+}

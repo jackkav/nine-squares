@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { checkWinner, emptyBoard, isDraw, type Mark } from './board';
 import { getDebugListParam, getDebugNumberParam } from './debugParams';
 import { echoesForOutcome, type Outcome } from './echoes';
-import { fragmentsForLoopCount } from './fragments';
+import { fragmentsForLoopCount, mergeFragments } from './fragments';
 import {
   computeOfflineCredit,
   formatOfflineSummary,
@@ -11,6 +11,7 @@ import {
 } from './offlineProgress';
 import { computeOpponentMove } from './opponent';
 import { loadSave, writeSave, type PersistedState } from './persistence';
+import { multiplierForSparks, sparksForPrestige } from './prestige';
 import { createRng, type Rng } from './prng';
 import { UPGRADES } from './upgrades';
 
@@ -26,6 +27,7 @@ export interface GameState {
   upgrades: Record<string, boolean>;
   fragments: string[];
   offlineSummary: string | null;
+  metaCurrency: number;
 }
 
 /** Pure state transition for placing the player's mark at `index`, including
@@ -85,6 +87,7 @@ export function useGame(seed: string) {
       upgrades: Object.fromEntries(owned.map((id) => [id, true])),
       fragments: fragmentsForLoopCount(loopCount),
       offlineSummary: null,
+      metaCurrency: getDebugNumberParam(search, 'sparks', 0),
     };
   });
 
@@ -110,9 +113,18 @@ export function useGame(seed: string) {
       echoes: state.echoes,
       upgrades: state.upgrades,
       fragments: state.fragments,
+      metaCurrency: state.metaCurrency,
     };
     writeSave(persisted);
-  }, [state.cells, state.size, state.loopCount, state.echoes, state.upgrades, state.fragments]);
+  }, [
+    state.cells,
+    state.size,
+    state.loopCount,
+    state.echoes,
+    state.upgrades,
+    state.fragments,
+    state.metaCurrency,
+  ]);
 
   // setState here is called with an already-computed value, never a
   // functional updater — see the note on applyMove.
@@ -136,6 +148,21 @@ export function useGame(seed: string) {
     }
 
     setState(next);
+  }
+
+  function prestige() {
+    const gain = sparksForPrestige(state.loopCount);
+    setState({
+      ...state,
+      cells: emptyBoard(DEFAULT_BOARD_SIZE),
+      size: DEFAULT_BOARD_SIZE,
+      status: '',
+      loopCount: 0,
+      echoes: 0,
+      upgrades: {},
+      // fragments and metaCurrency are meta-scoped and deliberately untouched.
+      metaCurrency: state.metaCurrency + gain,
+    });
   }
 
   // "Steady Hand": plays the lowest-index empty cell on a timer once owned.
@@ -173,17 +200,18 @@ export function useGame(seed: string) {
     writeLastSeen(now);
   }, []);
 
-  return { ...state, playCell, purchaseUpgrade };
+  return { ...state, playCell, purchaseUpgrade, prestige };
 }
 
 function resolved(prev: GameState, status: string, outcome: Outcome): GameState {
   const loopCount = prev.loopCount + 1;
+  const yieldMultiplier = multiplierForSparks(prev.metaCurrency);
   return {
     ...prev,
     cells: emptyBoard(prev.size),
     status,
     loopCount,
-    echoes: prev.echoes + echoesForOutcome(outcome),
-    fragments: fragmentsForLoopCount(loopCount),
+    echoes: prev.echoes + Math.round(echoesForOutcome(outcome) * yieldMultiplier),
+    fragments: mergeFragments(prev.fragments, loopCount),
   };
 }
