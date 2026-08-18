@@ -7,7 +7,7 @@ import { computeOpponentMove } from './opponent';
 import { createRng } from './prng';
 import { UPGRADES } from './upgrades';
 
-const BOARD_SIZE = 3;
+const DEFAULT_BOARD_SIZE = 3;
 
 export interface GameState {
   cells: Mark[];
@@ -24,9 +24,10 @@ export function useGame(seed: string) {
   const [state, setState] = useState<GameState>(() => {
     const search = window.location.search;
     const loopCount = getDebugNumberParam(search, 'loop', 0);
+    const size = getDebugNumberParam(search, 'board', DEFAULT_BOARD_SIZE);
     return {
-      cells: emptyBoard(BOARD_SIZE),
-      size: BOARD_SIZE,
+      cells: emptyBoard(size),
+      size,
       status: '',
       loopCount,
       echoes: getDebugNumberParam(search, 'echoes', 0),
@@ -77,11 +78,19 @@ export function useGame(seed: string) {
   function purchaseUpgrade(id: string) {
     const def = UPGRADES.find((u) => u.id === id);
     if (!def || state.upgrades[id] || state.echoes < def.cost) return;
-    setState({
+
+    const next: GameState = {
       ...state,
       echoes: state.echoes - def.cost,
       upgrades: { ...state.upgrades, [id]: true },
-    });
+    };
+
+    if (id === 'fourbyfour') {
+      next.size = 4;
+      next.cells = emptyBoard(4);
+    }
+
+    setState(next);
   }
 
   return { ...state, playCell, purchaseUpgrade };
