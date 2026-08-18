@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { checkWinner, emptyBoard, isDraw, type Mark } from './board';
+import { echoesForOutcome, type Outcome } from './echoes';
 import { computeOpponentMove } from './opponent';
 import { createRng } from './prng';
 
@@ -10,6 +11,7 @@ export interface GameState {
   size: number;
   status: string;
   loopCount: number;
+  echoes: number;
 }
 
 export function useGame(seed: string) {
@@ -19,6 +21,7 @@ export function useGame(seed: string) {
     size: BOARD_SIZE,
     status: '',
     loopCount: 0,
+    echoes: 0,
   });
 
   // Reads state directly (not via a setState functional updater) because
@@ -35,11 +38,11 @@ export function useGame(seed: string) {
 
     let winner = checkWinner(cells, state.size);
     if (winner === 'X') {
-      setState(resolved(state, 'You closed the line.'));
+      setState(resolved(state, 'You closed the line.', 'win'));
       return;
     }
     if (isDraw(cells)) {
-      setState(resolved(state, 'Nothing yields. A draw.'));
+      setState(resolved(state, 'Nothing yields. A draw.', 'draw'));
       return;
     }
 
@@ -49,11 +52,11 @@ export function useGame(seed: string) {
 
     winner = checkWinner(cells, state.size);
     if (winner === 'O') {
-      setState(resolved(state, 'The opponent closed the line.'));
+      setState(resolved(state, 'The opponent closed the line.', 'loss'));
       return;
     }
     if (isDraw(cells)) {
-      setState(resolved(state, 'Nothing yields. A draw.'));
+      setState(resolved(state, 'Nothing yields. A draw.', 'draw'));
       return;
     }
 
@@ -63,11 +66,12 @@ export function useGame(seed: string) {
   return { ...state, playCell };
 }
 
-function resolved(prev: GameState, status: string): GameState {
+function resolved(prev: GameState, status: string, outcome: Outcome): GameState {
   return {
     ...prev,
     cells: emptyBoard(prev.size),
     status,
     loopCount: prev.loopCount + 1,
+    echoes: prev.echoes + echoesForOutcome(outcome),
   };
 }

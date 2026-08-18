@@ -4,13 +4,16 @@ import { useGame } from './useGame';
 
 function App() {
   const seed = useMemo(() => getSeedFromLocation(window.location.search), []);
-  const { cells, size, status, loopCount, playCell } = useGame(seed);
+  const { cells, size, status, loopCount, echoes, playCell } = useGame(seed);
 
   return (
     <main>
       <h1>The Nine Squares</h1>
       <p data-testid="loop-count-label">
         Loop <span data-testid="loop-count">{loopCount}</span>
+      </p>
+      <p data-testid="echo-count-label">
+        Echoes <span data-testid="echo-count">{echoes}</span>
       </p>
       <p data-testid="status">{status}</p>
       <div
