@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { checkWinner, emptyBoard, isDraw, type Mark } from './board';
 import { getDebugNumberParam } from './debugParams';
 import { echoesForOutcome, type Outcome } from './echoes';
+import { fragmentsForLoopCount } from './fragments';
 import { computeOpponentMove } from './opponent';
 import { createRng } from './prng';
 import { UPGRADES } from './upgrades';
@@ -15,19 +16,22 @@ export interface GameState {
   loopCount: number;
   echoes: number;
   upgrades: Record<string, boolean>;
+  fragments: string[];
 }
 
 export function useGame(seed: string) {
   const rng = useRef(createRng(seed)).current;
   const [state, setState] = useState<GameState>(() => {
     const search = window.location.search;
+    const loopCount = getDebugNumberParam(search, 'loop', 0);
     return {
       cells: emptyBoard(BOARD_SIZE),
       size: BOARD_SIZE,
       status: '',
-      loopCount: getDebugNumberParam(search, 'loop', 0),
+      loopCount,
       echoes: getDebugNumberParam(search, 'echoes', 0),
       upgrades: {},
+      fragments: fragmentsForLoopCount(loopCount),
     };
   });
 
@@ -84,11 +88,13 @@ export function useGame(seed: string) {
 }
 
 function resolved(prev: GameState, status: string, outcome: Outcome): GameState {
+  const loopCount = prev.loopCount + 1;
   return {
     ...prev,
     cells: emptyBoard(prev.size),
     status,
-    loopCount: prev.loopCount + 1,
+    loopCount,
     echoes: prev.echoes + echoesForOutcome(outcome),
+    fragments: fragmentsForLoopCount(loopCount),
   };
 }

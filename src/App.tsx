@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
+import { FRAGMENTS } from './fragments';
 import { getSeedFromLocation } from './prng';
 import { UPGRADES } from './upgrades';
 import { useGame } from './useGame';
 
 function App() {
   const seed = useMemo(() => getSeedFromLocation(window.location.search), []);
-  const { cells, size, status, loopCount, echoes, upgrades, playCell, purchaseUpgrade } = useGame(seed);
+  const { cells, size, status, loopCount, echoes, upgrades, fragments, playCell, purchaseUpgrade } =
+    useGame(seed);
 
   return (
     <main>
@@ -53,6 +55,16 @@ function App() {
           );
         })}
       </div>
+      <ul data-testid="fragment-log">
+        {fragments.map((id) => {
+          const fragment = FRAGMENTS.find((f) => f.id === id);
+          return (
+            <li key={id} data-testid="fragment">
+              {fragment?.text}
+            </li>
+          );
+        })}
+      </ul>
     </main>
   );
 }

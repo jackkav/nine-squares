@@ -9,13 +9,18 @@ export async function playMoves(page: Page, cellIndices: number[]) {
 
 /**
  * Plays as the player by always taking the lowest-index empty cell, until
- * the status region announces a resolution (win, loss, or draw). Paired
- * with a seed found to produce a specific outcome against this exact
- * strategy — see scratch derivation notes in the D1 commit.
+ * the loop count increments (i.e. the match resolves — win, loss, or
+ * draw). Paired with a seed found to produce a specific outcome against
+ * this exact strategy — see scratch derivation notes in the D1 commit.
+ *
+ * Resolution is detected via the loop count rather than the status text,
+ * because consecutive matches can land on the same outcome (e.g. two
+ * draws in a row), which would make a text-equality check miss the
+ * second resolution.
  */
 export async function playToCompletion(page: Page, maxMoves = 9) {
+  const loopCountBefore = await page.getByTestId('loop-count').textContent();
   for (let move = 0; move < maxMoves; move++) {
-    const statusBefore = await page.getByTestId('status').textContent();
     const cells = page.getByTestId('cell');
     const count = await cells.count();
     let clicked = false;
@@ -28,7 +33,14 @@ export async function playToCompletion(page: Page, maxMoves = 9) {
       }
     }
     if (!clicked) return;
-    const statusAfter = await page.getByTestId('status').textContent();
-    if (statusAfter && statusAfter !== statusBefore) return;
+    const loopCountAfter = await page.getByTestId('loop-count').textContent();
+    if (loopCountAfter !== loopCountBefore) return;
+  }
+}
+
+/** Plays n complete matches in a row, each via playToCompletion. */
+export async function advanceLoops(page: Page, n: number) {
+  for (let i = 0; i < n; i++) {
+    await playToCompletion(page);
   }
 }
