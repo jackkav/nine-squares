@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react';
 import { checkWinner, emptyBoard, isDraw, type Mark } from './board';
+import { getDebugNumberParam } from './debugParams';
 import { echoesForOutcome, type Outcome } from './echoes';
 import { computeOpponentMove } from './opponent';
 import { createRng } from './prng';
+import { UPGRADES } from './upgrades';
 
 const BOARD_SIZE = 3;
 
@@ -12,16 +14,21 @@ export interface GameState {
   status: string;
   loopCount: number;
   echoes: number;
+  upgrades: Record<string, boolean>;
 }
 
 export function useGame(seed: string) {
   const rng = useRef(createRng(seed)).current;
-  const [state, setState] = useState<GameState>({
-    cells: emptyBoard(BOARD_SIZE),
-    size: BOARD_SIZE,
-    status: '',
-    loopCount: 0,
-    echoes: 0,
+  const [state, setState] = useState<GameState>(() => {
+    const search = window.location.search;
+    return {
+      cells: emptyBoard(BOARD_SIZE),
+      size: BOARD_SIZE,
+      status: '',
+      loopCount: getDebugNumberParam(search, 'loop', 0),
+      echoes: getDebugNumberParam(search, 'echoes', 0),
+      upgrades: {},
+    };
   });
 
   // Reads state directly (not via a setState functional updater) because
@@ -63,7 +70,17 @@ export function useGame(seed: string) {
     setState({ ...state, cells });
   }
 
-  return { ...state, playCell };
+  function purchaseUpgrade(id: string) {
+    const def = UPGRADES.find((u) => u.id === id);
+    if (!def || state.upgrades[id] || state.echoes < def.cost) return;
+    setState({
+      ...state,
+      echoes: state.echoes - def.cost,
+      upgrades: { ...state.upgrades, [id]: true },
+    });
+  }
+
+  return { ...state, playCell, purchaseUpgrade };
 }
 
 function resolved(prev: GameState, status: string, outcome: Outcome): GameState {

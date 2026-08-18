@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import { getSeedFromLocation } from './prng';
+import { UPGRADES } from './upgrades';
 import { useGame } from './useGame';
 
 function App() {
   const seed = useMemo(() => getSeedFromLocation(window.location.search), []);
-  const { cells, size, status, loopCount, echoes, playCell } = useGame(seed);
+  const { cells, size, status, loopCount, echoes, upgrades, playCell, purchaseUpgrade } = useGame(seed);
 
   return (
     <main>
@@ -35,6 +36,22 @@ function App() {
             {mark ?? ''}
           </button>
         ))}
+      </div>
+      <div data-testid="upgrades">
+        {UPGRADES.map((u) => {
+          const owned = Boolean(upgrades[u.id]);
+          return (
+            <button
+              key={u.id}
+              data-testid={`upgrade-${u.id}`}
+              data-state={owned ? 'owned' : 'available'}
+              disabled={owned || echoes < u.cost}
+              onClick={() => purchaseUpgrade(u.id)}
+            >
+              {u.label} ({u.cost})
+            </button>
+          );
+        })}
       </div>
     </main>
   );
