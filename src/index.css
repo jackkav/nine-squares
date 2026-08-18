@@ -1,0 +1,82 @@
+:root {
+  --text: #2a2730;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --accent: #7c1fd6;
+  --accent-contrast: #fff;
+  --cell-bg: #f4f3ec;
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font: 18px/145% var(--sans);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #d6d3db;
+    --text-h: #f3f4f6;
+    --bg: #16171d;
+    --border: #2e303a;
+    --accent: #c084fc;
+    --accent-contrast: #1a0a2e;
+    --cell-bg: #1f2028;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px;
+  text-align: center;
+}
+
+h1 {
+  color: var(--text-h);
+  font-size: 32px;
+  margin: 16px 0 24px;
+}
+
+[data-testid='board'] {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  max-width: 360px;
+  margin: 24px auto;
+}
+
+[data-testid='cell'] {
+  aspect-ratio: 1;
+  font-size: 28px;
+  font-weight: 600;
+  background: var(--cell-bg);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+[data-testid='cell']:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+[data-testid='cell']:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-testid='cell'] {
+    transition: background-color 120ms ease;
+  }
+}
