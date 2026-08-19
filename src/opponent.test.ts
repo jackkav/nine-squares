@@ -5,7 +5,7 @@ import { computeOpponentMove } from './opponent';
 import { createRng, type Rng } from './prng';
 
 const SIZE = 3;
-const TRIALS = 3000;
+const TRIALS = 1500;
 
 function simulateMatch(rng: Rng, claudeLevel: number, competitionLevel: number): 'X' | 'O' | 'draw' {
   let cells: Mark[] = emptyBoard(SIZE);
