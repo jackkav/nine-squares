@@ -38,8 +38,15 @@ jobs:
       # On a cache hit this skips the (slow, and occasionally flaky on
       # GitHub's runners) browser binary download entirely. System deps
       # (apt packages, not cached) still need installing every run.
+      # PLAYWRIGHT_DOWNLOAD_HOST points at npmmirror's public mirror
+      # instead of the default cdn.playwright.dev: several consecutive
+      # runs stalled and hit the job timeout downloading Chromium from the
+      # default host, which looked like sustained CDN trouble rather than
+      # a one-off blip.
       - name: Install Playwright Browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
+        env:
+          PLAYWRIGHT_DOWNLOAD_HOST: https://npmmirror.com/mirrors/playwright
         run: npx playwright install --with-deps chromium
       - name: Install Playwright OS dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
