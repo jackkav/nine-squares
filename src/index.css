@@ -163,6 +163,40 @@ h1 {
   opacity: 0.6;
 }
 
+[data-testid='prestige-shop'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+[data-testid='prestige-shop'] button {
+  font: inherit;
+  padding: 8px 14px;
+  background: var(--cell-bg);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+[data-testid='prestige-shop'] button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+[data-testid='prestige-shop'] button[data-state='owned'] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+}
+
+[data-testid='prestige-shop'] button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 [data-testid='fragment-log'] {
   list-style: none;
   margin: 32px 0 0;

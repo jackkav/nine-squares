@@ -20,6 +20,7 @@ import {
 import { computeOpponentMove } from './opponent';
 import { loadSave, writeSave, type PersistedState } from './persistence';
 import { multiplierForSparks, sparksForPrestige } from './prestige';
+import { HEADSTART_ECHOES, PRESTIGE_UPGRADES, sizeYieldMultiplier, WIDEN_BOARD_SIZE } from './prestigeShop';
 import { createRng, type Rng } from './prng';
 import { UPGRADES } from './upgrades';
 
@@ -39,6 +40,15 @@ export interface GameState {
   claudeLevel: number;
   competitionLevel: number;
   cash: number;
+  prestigeUpgrades: Record<string, boolean>;
+}
+
+function startingBoardSize(prestigeUpgrades: Record<string, boolean>): number {
+  return prestigeUpgrades.widen ? WIDEN_BOARD_SIZE : DEFAULT_BOARD_SIZE;
+}
+
+function startingEchoes(prestigeUpgrades: Record<string, boolean>): number {
+  return prestigeUpgrades.headstart ? HEADSTART_ECHOES : 0;
 }
 
 type MoveSource = 'manual' | 'auto';
@@ -89,14 +99,16 @@ export function useGame(seed: string) {
 
     const search = window.location.search;
     const loopCount = getDebugNumberParam(search, 'loop', 0);
-    const size = getDebugNumberParam(search, 'board', DEFAULT_BOARD_SIZE);
     const owned = getDebugListParam(search, 'owned');
+    const prestigeOwned = getDebugListParam(search, 'prestigeOwned');
+    const prestigeUpgrades = Object.fromEntries(prestigeOwned.map((id) => [id, true]));
+    const size = getDebugNumberParam(search, 'board', startingBoardSize(prestigeUpgrades));
     return {
       cells: emptyBoard(size),
       size,
       status: '',
       loopCount,
-      echoes: getDebugNumberParam(search, 'echoes', 0),
+      echoes: getDebugNumberParam(search, 'echoes', startingEchoes(prestigeUpgrades)),
       upgrades: Object.fromEntries(owned.map((id) => [id, true])),
       fragments: fragmentsForLoopCount(loopCount),
       offlineSummary: null,
@@ -105,6 +117,7 @@ export function useGame(seed: string) {
       claudeLevel: getDebugNumberParam(search, 'claudeLevel', 0),
       competitionLevel: getDebugNumberParam(search, 'competitionLevel', 0),
       cash: getDebugNumberParam(search, 'cash', 0),
+      prestigeUpgrades,
     };
   });
 
@@ -135,6 +148,7 @@ export function useGame(seed: string) {
       claudeLevel: state.claudeLevel,
       competitionLevel: state.competitionLevel,
       cash: state.cash,
+      prestigeUpgrades: state.prestigeUpgrades,
     };
     writeSave(persisted);
   }, [
@@ -149,6 +163,7 @@ export function useGame(seed: string) {
     state.claudeLevel,
     state.competitionLevel,
     state.cash,
+    state.prestigeUpgrades,
   ]);
 
   // setState here is called with an already-computed value, never a
@@ -160,16 +175,28 @@ export function useGame(seed: string) {
   function purchaseUpgrade(id: string) {
     const def = UPGRADES.find((u) => u.id === id);
     if (!def || state.upgrades[id] || state.echoes < def.cost) return;
-
-    const next: GameState = {
+    setState({
       ...state,
       echoes: state.echoes - def.cost,
       upgrades: { ...state.upgrades, [id]: true },
+    });
+  }
+
+  function purchasePrestigeUpgrade(id: string) {
+    const def = PRESTIGE_UPGRADES.find((u) => u.id === id);
+    if (!def || state.prestigeUpgrades[id] || state.metaCurrency < def.cost) return;
+
+    const next: GameState = {
+      ...state,
+      metaCurrency: state.metaCurrency - def.cost,
+      prestigeUpgrades: { ...state.prestigeUpgrades, [id]: true },
     };
 
-    if (id === 'fourbyfour') {
-      next.size = 4;
-      next.cells = emptyBoard(4);
+    // Widening takes effect on the current board immediately, in addition
+    // to becoming the default for every future run (see prestige()).
+    if (id === 'widen') {
+      next.size = WIDEN_BOARD_SIZE;
+      next.cells = emptyBoard(WIDEN_BOARD_SIZE);
     }
 
     setState(next);
@@ -177,18 +204,19 @@ export function useGame(seed: string) {
 
   function prestige() {
     const gain = sparksForPrestige(state.loopCount);
+    const size = startingBoardSize(state.prestigeUpgrades);
     setState({
       ...state,
-      cells: emptyBoard(DEFAULT_BOARD_SIZE),
-      size: DEFAULT_BOARD_SIZE,
+      cells: emptyBoard(size),
+      size,
       status: '',
       loopCount: 0,
-      echoes: 0,
+      echoes: startingEchoes(state.prestigeUpgrades),
       upgrades: {},
       // Claude and competition are both bought and leveled with run-scoped
       // currencies (echoes, tokens, cash), so they reset alongside them
-      // rather than with fragments and metaCurrency, which are the only
-      // things meta-scoped here.
+      // rather than with fragments, metaCurrency, and prestigeUpgrades,
+      // which are the only things meta-scoped here.
       tokens: 0,
       claudeLevel: 0,
       competitionLevel: 0,
@@ -257,12 +285,13 @@ export function useGame(seed: string) {
     prestige,
     purchaseClaudeLevel,
     purchaseCompetitionLevel,
+    purchasePrestigeUpgrade,
   };
 }
 
 function resolved(prev: GameState, status: string, outcome: Outcome, source: MoveSource): GameState {
   const loopCount = prev.loopCount + 1;
-  const yieldMultiplier = multiplierForSparks(prev.metaCurrency);
+  const yieldMultiplier = multiplierForSparks(prev.metaCurrency) * sizeYieldMultiplier(prev.size);
   return {
     ...prev,
     cells: emptyBoard(prev.size),

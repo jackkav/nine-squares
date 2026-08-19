@@ -8,6 +8,7 @@ import {
 } from './competition';
 import { FRAGMENTS } from './fragments';
 import { getSeedFromLocation } from './prng';
+import { PRESTIGE_UPGRADES } from './prestigeShop';
 import { UPGRADES } from './upgrades';
 import { useGame } from './useGame';
 
@@ -27,11 +28,13 @@ function App() {
     claudeLevel,
     competitionLevel,
     cash,
+    prestigeUpgrades,
     playCell,
     purchaseUpgrade,
     prestige,
     purchaseClaudeLevel,
     purchaseCompetitionLevel,
+    purchasePrestigeUpgrade,
   } = useGame(seed);
   const [confirmingPrestige, setConfirmingPrestige] = useState(false);
   const claudeOwned = Boolean(upgrades.autoplay);
@@ -140,6 +143,22 @@ function App() {
           );
         })}
       </ul>
+      <div data-testid="prestige-shop">
+        {PRESTIGE_UPGRADES.map((u) => {
+          const owned = Boolean(prestigeUpgrades[u.id]);
+          return (
+            <button
+              key={u.id}
+              data-testid={`prestige-upgrade-${u.id}`}
+              data-state={owned ? 'owned' : 'available'}
+              disabled={owned || metaCurrency < u.cost}
+              onClick={() => purchasePrestigeUpgrade(u.id)}
+            >
+              {u.label} ({u.cost} sparks)
+            </button>
+          );
+        })}
+      </div>
       <div data-testid="prestige">
         {!confirmingPrestige && (
           <button data-testid="prestige-button" onClick={() => setConfirmingPrestige(true)}>
