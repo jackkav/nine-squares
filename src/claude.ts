@@ -11,3 +11,12 @@ export function claudeLevelUpCost(currentLevel: number): number | null {
 export const CLAUDE_LEVEL_LABELS = ['Claude', 'Claude I — Reflexive', 'Claude II — Predictive'];
 
 export const TOKENS_PER_AUTO_RESOLUTION = 1;
+
+// Milliseconds between Claude's moves, indexed by level. Each level makes
+// Claude both smarter (see autoplay.ts) and faster — a level-up should
+// obviously improve the automation, not just its win rate.
+const AUTOPLAY_INTERVAL_MS = [500, 350, 200];
+
+export function autoplayIntervalMs(claudeLevel: number): number {
+  return AUTOPLAY_INTERVAL_MS[claudeLevel] ?? AUTOPLAY_INTERVAL_MS[AUTOPLAY_INTERVAL_MS.length - 1];
+}

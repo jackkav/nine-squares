@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { checkWinner, emptyBoard, isDraw, type Mark } from './board';
 import { selectAutoMove } from './autoplay';
-import { claudeLevelUpCost, MAX_CLAUDE_LEVEL, TOKENS_PER_AUTO_RESOLUTION } from './claude';
+import {
+  autoplayIntervalMs,
+  claudeLevelUpCost,
+  MAX_CLAUDE_LEVEL,
+  TOKENS_PER_AUTO_RESOLUTION,
+} from './claude';
 import { cashPrizeForLevel, competitionLevelUpCost, MAX_COMPETITION_LEVEL } from './competition';
 import { getDebugListParam, getDebugNumberParam } from './debugParams';
 import { echoesForOutcome, type Outcome } from './echoes';
@@ -19,7 +24,6 @@ import { createRng, type Rng } from './prng';
 import { UPGRADES } from './upgrades';
 
 const DEFAULT_BOARD_SIZE = 3;
-const AUTOPLAY_INTERVAL_MS = 500;
 
 export interface GameState {
   cells: Mark[];
@@ -209,6 +213,9 @@ export function useGame(seed: string) {
 
   // Claude: plays a move on a timer once owned, using selectAutoMove tuned
   // to its purchased level (0 = original lowest-empty-index behaviour).
+  // The interval itself also shortens per level (autoplayIntervalMs), so
+  // the effect must re-run — clearing and recreating the timer — whenever
+  // claudeLevel changes, not just when autoplay is first owned.
   useEffect(() => {
     if (!state.upgrades.autoplay) return;
     const id = setInterval(() => {
@@ -218,9 +225,9 @@ export function useGame(seed: string) {
       const next = applyMove(current, target, rng, 'auto');
       stateRef.current = next;
       setState(next);
-    }, AUTOPLAY_INTERVAL_MS);
+    }, autoplayIntervalMs(state.claudeLevel));
     return () => clearInterval(id);
-  }, [state.upgrades.autoplay, rng]);
+  }, [state.upgrades.autoplay, state.claudeLevel, rng]);
 
   // Offline progress: credited once per load, guarded against StrictMode's
   // dev-only double effect invocation with a ref rather than relying on the

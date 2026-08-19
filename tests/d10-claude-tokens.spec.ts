@@ -10,7 +10,9 @@ test('manual play does not earn tokens', async ({ page }) => {
 test('automated play earns tokens', async ({ page }) => {
   await page.clock.install();
   await page.goto('/?seed=1&owned=autoplay');
-  await page.clock.fastForward('00:30');
+  // runFor, not fastForward — see the D12 commit for why fastForward
+  // alone doesn't reliably drive a repeating setInterval.
+  await page.clock.runFor('00:30');
   await expect(page.getByTestId('token-count')).not.toHaveText('0');
 });
 
@@ -48,14 +50,14 @@ test('claude cannot level past the max', async ({ page }) => {
 test('claude level 0 loses this seed', async ({ page }) => {
   await page.clock.install();
   await page.goto('/?seed=claude-demo-2&owned=autoplay&claudeLevel=0');
-  await page.clock.fastForward('00:10');
+  await page.clock.runFor('00:10');
   await expect(page.getByTestId('status')).toContainText('opponent closed the line');
 });
 
 test('claude level 2 wins the same seed', async ({ page }) => {
   await page.clock.install();
   await page.goto('/?seed=claude-demo-2&owned=autoplay&claudeLevel=2');
-  await page.clock.fastForward('00:10');
+  await page.clock.runFor('00:10');
   await expect(page.getByTestId('status')).toContainText('You closed the line');
 });
 

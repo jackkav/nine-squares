@@ -5,7 +5,14 @@ test('automation accrues echoes with no input', async ({ page }) => {
   await page.goto('/?seed=1&echoes=10');
   await page.getByTestId('upgrade-autoplay').click();
   const before = await page.getByTestId('echo-count').textContent();
-  await page.clock.fastForward('00:30');
+  // runFor, not fastForward: fastForward only fires a repeating
+  // setInterval once, no matter how long the requested duration — it
+  // doesn't synchronously drain the timer queue the way runFor does. See
+  // the D12 commit for the full story; this test predates that finding
+  // and previously only passed because the retrying expect() below
+  // happened to let a few more ticks through as a side effect of its own
+  // polling, not because fastForward actually worked as intended.
+  await page.clock.runFor('00:30');
   await expect(page.getByTestId('echo-count')).not.toHaveText(before!);
 });
 
