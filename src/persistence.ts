@@ -1,13 +1,16 @@
 import type { Mark } from './board';
 
 export const SAVE_KEY = 'save';
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 /** The portion of GameState that's durable across reloads. */
 export interface PersistedState {
   cells: Mark[];
   size: number;
   loopCount: number;
+  totalGamesPlayed: number;
+  winCount: number;
+  lossCount: number;
   echoes: number;
   upgrades: Record<string, boolean>;
   fragments: string[];
@@ -78,13 +81,29 @@ interface SaveV5 {
   cash: number;
 }
 
-interface SaveV6 extends PersistedState {
+interface SaveV6 {
   version: 6;
+  cells: Mark[];
+  size: number;
+  loopCount: number;
+  echoes: number;
+  upgrades: Record<string, boolean>;
+  fragments: string[];
+  metaCurrency: number;
+  tokens: number;
+  claudeLevel: number;
+  competitionLevel: number;
+  cash: number;
+  prestigeUpgrades: Record<string, boolean>;
 }
 
-type AnySave = SaveV1 | SaveV2 | SaveV3 | SaveV4 | SaveV5 | SaveV6;
+interface SaveV7 extends PersistedState {
+  version: 7;
+}
 
-function migrate(save: AnySave): SaveV6 {
+type AnySave = SaveV1 | SaveV2 | SaveV3 | SaveV4 | SaveV5 | SaveV6 | SaveV7;
+
+function migrate(save: AnySave): SaveV7 {
   if (save.version === 1) {
     return migrate({
       version: 2,
@@ -106,7 +125,10 @@ function migrate(save: AnySave): SaveV6 {
     return migrate({ ...save, version: 5, competitionLevel: 0, cash: 0 });
   }
   if (save.version === 5) {
-    return { ...save, version: 6, prestigeUpgrades: {} };
+    return migrate({ ...save, version: 6, prestigeUpgrades: {} });
+  }
+  if (save.version === 6) {
+    return { ...save, version: 7, totalGamesPlayed: save.loopCount, winCount: 0, lossCount: 0 };
   }
   return save;
 }
@@ -124,6 +146,6 @@ export function loadSave(): PersistedState | null {
 }
 
 export function writeSave(state: PersistedState): void {
-  const save: SaveV6 = { version: SAVE_VERSION, ...state };
+  const save: SaveV7 = { version: SAVE_VERSION, ...state };
   localStorage.setItem(SAVE_KEY, JSON.stringify(save));
 }

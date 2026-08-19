@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('automation accrues echoes with no input', async ({ page }) => {
   await page.clock.install();
-  await page.goto('/?seed=1&echoes=10');
+  await page.goto('/?seed=1&cash=10');
   await page.getByTestId('upgrade-autoplay').click();
   const before = await page.getByTestId('echo-count').textContent();
   // runFor, not fastForward: fastForward only fires a repeating

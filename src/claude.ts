@@ -1,3 +1,8 @@
+// Priced in cash rather than echoes: exactly what 2 wins at competition
+// level 1 pays out (2 * 5), so "win two competition games" is what it
+// actually takes to afford unlocking Claude, not an arbitrary number.
+export const AUTOPLAY_CASH_COST = 10;
+
 export const MAX_CLAUDE_LEVEL = 2;
 
 // Cost in tokens to advance FROM index N TO N+1.

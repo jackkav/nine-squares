@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { checkWinner, emptyBoard, isDraw, type Mark } from './board';
 import { selectAutoMove } from './autoplay';
 import {
+  AUTOPLAY_CASH_COST,
   autoplayIntervalMs,
   claudeLevelUpCost,
   MAX_CLAUDE_LEVEL,
@@ -23,7 +24,6 @@ import { loadSave, writeSave, type PersistedState } from './persistence';
 import { multiplierForSparks, sparksForPrestige } from './prestige';
 import { HEADSTART_ECHOES, PRESTIGE_UPGRADES, sizeYieldMultiplier, WIDEN_BOARD_SIZE } from './prestigeShop';
 import { createRng, type Rng } from './prng';
-import { UPGRADES } from './upgrades';
 
 const DEFAULT_BOARD_SIZE = 3;
 
@@ -32,6 +32,12 @@ export interface GameState {
   size: number;
   status: string;
   loopCount: number;
+  // Lifetime stats — meta-scoped like fragments and sparks, deliberately
+  // never reset by prestige(). They're historical record-keeping (and the
+  // competition unlock gate), not a spendable resource tied to a run.
+  totalGamesPlayed: number;
+  winCount: number;
+  lossCount: number;
   echoes: number;
   upgrades: Record<string, boolean>;
   fragments: string[];
@@ -109,6 +115,9 @@ export function useGame(seed: string) {
       size,
       status: '',
       loopCount,
+      totalGamesPlayed: getDebugNumberParam(search, 'totalGames', 0),
+      winCount: getDebugNumberParam(search, 'wins', 0),
+      lossCount: getDebugNumberParam(search, 'losses', 0),
       echoes: getDebugNumberParam(search, 'echoes', startingEchoes(prestigeUpgrades)),
       upgrades: Object.fromEntries(owned.map((id) => [id, true])),
       fragments: fragmentsForLoopCount(loopCount),
@@ -141,6 +150,9 @@ export function useGame(seed: string) {
       cells: state.cells,
       size: state.size,
       loopCount: state.loopCount,
+      totalGamesPlayed: state.totalGamesPlayed,
+      winCount: state.winCount,
+      lossCount: state.lossCount,
       echoes: state.echoes,
       upgrades: state.upgrades,
       fragments: state.fragments,
@@ -156,6 +168,9 @@ export function useGame(seed: string) {
     state.cells,
     state.size,
     state.loopCount,
+    state.totalGamesPlayed,
+    state.winCount,
+    state.lossCount,
     state.echoes,
     state.upgrades,
     state.fragments,
@@ -173,13 +188,15 @@ export function useGame(seed: string) {
     setState(applyMove(state, index, rng));
   }
 
-  function purchaseUpgrade(id: string) {
-    const def = UPGRADES.find((u) => u.id === id);
-    if (!def || state.upgrades[id] || state.echoes < def.cost) return;
+  // Priced in cash, not echoes: reaching it is meant to require actually
+  // entering and winning competition matches first (cash only comes from
+  // competition wins), not just grinding echoes from casual play.
+  function purchaseAutoplay() {
+    if (state.upgrades.autoplay || state.cash < AUTOPLAY_CASH_COST) return;
     setState({
       ...state,
-      echoes: state.echoes - def.cost,
-      upgrades: { ...state.upgrades, [id]: true },
+      cash: state.cash - AUTOPLAY_CASH_COST,
+      upgrades: { ...state.upgrades, autoplay: true },
     });
   }
 
@@ -216,8 +233,9 @@ export function useGame(seed: string) {
       upgrades: {},
       // Claude and competition are both bought and leveled with run-scoped
       // currencies (echoes, tokens, cash), so they reset alongside them
-      // rather than with fragments, metaCurrency, and prestigeUpgrades,
-      // which are the only things meta-scoped here.
+      // rather than with fragments, metaCurrency, prestigeUpgrades,
+      // totalGamesPlayed, winCount, and lossCount, which are the only
+      // things meta-scoped here.
       tokens: 0,
       claudeLevel: 0,
       competitionLevel: 0,
@@ -291,7 +309,7 @@ export function useGame(seed: string) {
   return {
     ...state,
     playCell,
-    purchaseUpgrade,
+    purchaseAutoplay,
     prestige,
     purchaseClaudeLevel,
     purchaseCompetitionLevel,
@@ -308,6 +326,9 @@ function resolved(prev: GameState, status: string, outcome: Outcome, source: Mov
     cells: emptyBoard(prev.size),
     status,
     loopCount,
+    totalGamesPlayed: prev.totalGamesPlayed + 1,
+    winCount: prev.winCount + (outcome === 'win' ? 1 : 0),
+    lossCount: prev.lossCount + (outcome === 'loss' ? 1 : 0),
     echoes: prev.echoes + Math.round(echoesForOutcome(outcome) * yieldMultiplier),
     // Tokens are a byproduct of Claude's own play, not the player's — they
     // fund leveling Claude up further, independent of manual sessions.

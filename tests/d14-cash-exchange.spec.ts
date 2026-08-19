@@ -1,19 +1,19 @@
 import { test, expect } from '@playwright/test';
 
 test('exchange is disabled without enough cash', async ({ page }) => {
-  await page.goto('/?seed=1&cash=5');
+  await page.goto('/?seed=1&cash=5&totalGames=3');
   await expect(page.getByTestId('exchange-cash-for-tokens')).toBeDisabled(); // costs 10, have 5
 });
 
 test('exchanging cash deducts cash and grants tokens', async ({ page }) => {
-  await page.goto('/?seed=1&cash=10');
+  await page.goto('/?seed=1&cash=10&totalGames=3');
   await page.getByTestId('exchange-cash-for-tokens').click();
   await expect(page.getByTestId('cash-count')).toHaveText('0');
   await expect(page.getByTestId('token-count')).toHaveText('5');
 });
 
 test('exchange is repeatable, not a one-time purchase', async ({ page }) => {
-  await page.goto('/?seed=1&cash=25');
+  await page.goto('/?seed=1&cash=25&totalGames=3');
   await page.getByTestId('exchange-cash-for-tokens').click();
   await page.getByTestId('exchange-cash-for-tokens').click();
   await expect(page.getByTestId('cash-count')).toHaveText('5');
@@ -23,7 +23,12 @@ test('exchange is repeatable, not a one-time purchase', async ({ page }) => {
 });
 
 test('exchanged tokens can fund a claude level-up', async ({ page }) => {
-  await page.goto('/?seed=1&owned=autoplay&cash=30');
+  // Freeze the clock: Claude is already owned here, and without a frozen
+  // clock its real-time automation would earn extra tokens in the
+  // background while this test clicks around, on top of the ones the
+  // exchange grants — flaky by design otherwise.
+  await page.clock.install();
+  await page.goto('/?seed=1&owned=autoplay&cash=30&totalGames=3');
   await page.getByTestId('exchange-cash-for-tokens').click();
   await page.getByTestId('exchange-cash-for-tokens').click();
   await page.getByTestId('exchange-cash-for-tokens').click();

@@ -1,3 +1,6 @@
+// Games played (any outcome) before the Competition panel reveals itself.
+export const COMPETITION_UNLOCK_GAMES = 3;
+
 export const MAX_COMPETITION_LEVEL = 2;
 
 // Cost in echoes to advance FROM index N TO N+1.
