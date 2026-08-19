@@ -38,3 +38,24 @@ export function wouldWin(cells: Mark[], index: number, mark: 'X' | 'O', size: nu
   next[index] = mark;
   return checkWinner(next, size) === mark;
 }
+
+export function emptyIndices(cells: Mark[]): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < cells.length; i++) {
+    if (cells[i] === null) out.push(i);
+  }
+  return out;
+}
+
+/** How many different remaining cells would complete a line for `mark` if
+ * `index` were played now. 2+ means placing there creates a fork. */
+export function countThreatsAfter(cells: Mark[], index: number, mark: 'X' | 'O', size: number): number {
+  if (cells[index] !== null) return 0;
+  const next = [...cells];
+  next[index] = mark;
+  let count = 0;
+  for (const i of emptyIndices(next)) {
+    if (wouldWin(next, i, mark, size)) count++;
+  }
+  return count;
+}

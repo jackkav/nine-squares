@@ -1,7 +1,7 @@
 import type { Mark } from './board';
 
 export const SAVE_KEY = 'save';
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 /** The portion of GameState that's durable across reloads. */
 export interface PersistedState {
@@ -12,6 +12,8 @@ export interface PersistedState {
   upgrades: Record<string, boolean>;
   fragments: string[];
   metaCurrency: number;
+  tokens: number;
+  claudeLevel: number;
 }
 
 interface SaveV1 {
@@ -34,13 +36,24 @@ interface SaveV2 {
   fragments: string[];
 }
 
-interface SaveV3 extends PersistedState {
+interface SaveV3 {
   version: 3;
+  cells: Mark[];
+  size: number;
+  loopCount: number;
+  echoes: number;
+  upgrades: Record<string, boolean>;
+  fragments: string[];
+  metaCurrency: number;
 }
 
-type AnySave = SaveV1 | SaveV2 | SaveV3;
+interface SaveV4 extends PersistedState {
+  version: 4;
+}
 
-function migrate(save: AnySave): SaveV3 {
+type AnySave = SaveV1 | SaveV2 | SaveV3 | SaveV4;
+
+function migrate(save: AnySave): SaveV4 {
   if (save.version === 1) {
     return migrate({
       version: 2,
@@ -53,7 +66,10 @@ function migrate(save: AnySave): SaveV3 {
     });
   }
   if (save.version === 2) {
-    return { ...save, version: 3, metaCurrency: 0 };
+    return migrate({ ...save, version: 3, metaCurrency: 0 });
+  }
+  if (save.version === 3) {
+    return { ...save, version: 4, tokens: 0, claudeLevel: 0 };
   }
   return save;
 }
@@ -71,6 +87,6 @@ export function loadSave(): PersistedState | null {
 }
 
 export function writeSave(state: PersistedState): void {
-  const save: SaveV3 = { version: SAVE_VERSION, ...state };
+  const save: SaveV4 = { version: SAVE_VERSION, ...state };
   localStorage.setItem(SAVE_KEY, JSON.stringify(save));
 }

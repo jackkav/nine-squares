@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { checkWinner, emptyBoard, isDraw, type Mark } from './board';
+import { selectAutoMove } from './autoplay';
+import { claudeLevelUpCost, MAX_CLAUDE_LEVEL, TOKENS_PER_AUTO_RESOLUTION } from './claude';
 import { getDebugListParam, getDebugNumberParam } from './debugParams';
 import { echoesForOutcome, type Outcome } from './echoes';
 import { fragmentsForLoopCount, mergeFragments } from './fragments';
@@ -28,13 +30,17 @@ export interface GameState {
   fragments: string[];
   offlineSummary: string | null;
   metaCurrency: number;
+  tokens: number;
+  claudeLevel: number;
 }
+
+type MoveSource = 'manual' | 'auto';
 
 /** Pure state transition for placing the player's mark at `index`, including
  * the opponent's reply. No side effects, so it's safe to call from anywhere
  * (a click handler, an automation timer) without StrictMode's double-invoke
  * of impure updates corrupting the RNG sequence. */
-function applyMove(state: GameState, index: number, rng: Rng): GameState {
+function applyMove(state: GameState, index: number, rng: Rng, source: MoveSource = 'manual'): GameState {
   if (state.cells[index] !== null) return state;
 
   let cells = [...state.cells];
@@ -42,10 +48,10 @@ function applyMove(state: GameState, index: number, rng: Rng): GameState {
 
   let winner = checkWinner(cells, state.size);
   if (winner === 'X') {
-    return resolved({ ...state, cells }, 'You closed the line.', 'win');
+    return resolved({ ...state, cells }, 'You closed the line.', 'win', source);
   }
   if (isDraw(cells)) {
-    return resolved({ ...state, cells }, 'Nothing yields. A draw.', 'draw');
+    return resolved({ ...state, cells }, 'Nothing yields. A draw.', 'draw', source);
   }
 
   const opponentMove = computeOpponentMove(cells, state.size, rng);
@@ -54,10 +60,10 @@ function applyMove(state: GameState, index: number, rng: Rng): GameState {
 
   winner = checkWinner(cells, state.size);
   if (winner === 'O') {
-    return resolved({ ...state, cells }, 'The opponent closed the line.', 'loss');
+    return resolved({ ...state, cells }, 'The opponent closed the line.', 'loss', source);
   }
   if (isDraw(cells)) {
-    return resolved({ ...state, cells }, 'Nothing yields. A draw.', 'draw');
+    return resolved({ ...state, cells }, 'Nothing yields. A draw.', 'draw', source);
   }
 
   return { ...state, cells };
@@ -88,6 +94,8 @@ export function useGame(seed: string) {
       fragments: fragmentsForLoopCount(loopCount),
       offlineSummary: null,
       metaCurrency: getDebugNumberParam(search, 'sparks', 0),
+      tokens: getDebugNumberParam(search, 'tokens', 0),
+      claudeLevel: getDebugNumberParam(search, 'claudeLevel', 0),
     };
   });
 
@@ -114,6 +122,8 @@ export function useGame(seed: string) {
       upgrades: state.upgrades,
       fragments: state.fragments,
       metaCurrency: state.metaCurrency,
+      tokens: state.tokens,
+      claudeLevel: state.claudeLevel,
     };
     writeSave(persisted);
   }, [
@@ -124,6 +134,8 @@ export function useGame(seed: string) {
     state.upgrades,
     state.fragments,
     state.metaCurrency,
+    state.tokens,
+    state.claudeLevel,
   ]);
 
   // setState here is called with an already-computed value, never a
@@ -160,19 +172,31 @@ export function useGame(seed: string) {
       loopCount: 0,
       echoes: 0,
       upgrades: {},
-      // fragments and metaCurrency are meta-scoped and deliberately untouched.
+      // Claude is bought and leveled with run-scoped currencies (echoes,
+      // tokens), so it resets alongside them rather than with fragments
+      // and metaCurrency, which are the only things meta-scoped here.
+      tokens: 0,
+      claudeLevel: 0,
       metaCurrency: state.metaCurrency + gain,
     });
   }
 
-  // "Steady Hand": plays the lowest-index empty cell on a timer once owned.
+  function purchaseClaudeLevel() {
+    if (!state.upgrades.autoplay || state.claudeLevel >= MAX_CLAUDE_LEVEL) return;
+    const cost = claudeLevelUpCost(state.claudeLevel);
+    if (cost === null || state.tokens < cost) return;
+    setState({ ...state, tokens: state.tokens - cost, claudeLevel: state.claudeLevel + 1 });
+  }
+
+  // Claude: plays a move on a timer once owned, using selectAutoMove tuned
+  // to its purchased level (0 = original lowest-empty-index behaviour).
   useEffect(() => {
     if (!state.upgrades.autoplay) return;
     const id = setInterval(() => {
       const current = stateRef.current;
-      const target = current.cells.findIndex((c) => c === null);
-      if (target === -1) return;
-      const next = applyMove(current, target, rng);
+      const target = selectAutoMove(current.cells, current.size, current.claudeLevel);
+      if (target === undefined || current.cells[target] !== null) return;
+      const next = applyMove(current, target, rng, 'auto');
       stateRef.current = next;
       setState(next);
     }, AUTOPLAY_INTERVAL_MS);
@@ -200,10 +224,10 @@ export function useGame(seed: string) {
     writeLastSeen(now);
   }, []);
 
-  return { ...state, playCell, purchaseUpgrade, prestige };
+  return { ...state, playCell, purchaseUpgrade, prestige, purchaseClaudeLevel };
 }
 
-function resolved(prev: GameState, status: string, outcome: Outcome): GameState {
+function resolved(prev: GameState, status: string, outcome: Outcome, source: MoveSource): GameState {
   const loopCount = prev.loopCount + 1;
   const yieldMultiplier = multiplierForSparks(prev.metaCurrency);
   return {
@@ -212,6 +236,9 @@ function resolved(prev: GameState, status: string, outcome: Outcome): GameState 
     status,
     loopCount,
     echoes: prev.echoes + Math.round(echoesForOutcome(outcome) * yieldMultiplier),
+    // Tokens are a byproduct of Claude's own play, not the player's — they
+    // fund leveling Claude up further, independent of manual sessions.
+    tokens: prev.tokens + (source === 'auto' ? TOKENS_PER_AUTO_RESOLUTION : 0),
     fragments: mergeFragments(prev.fragments, loopCount),
   };
 }

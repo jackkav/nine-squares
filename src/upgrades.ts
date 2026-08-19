@@ -5,6 +5,6 @@ export interface UpgradeDef {
 }
 
 export const UPGRADES: UpgradeDef[] = [
-  { id: 'autoplay', label: 'Steady Hand', cost: 8 },
+  { id: 'autoplay', label: 'Claude', cost: 8 },
   { id: 'fourbyfour', label: 'Widen the Grid', cost: 40 },
 ];

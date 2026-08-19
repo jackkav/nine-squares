@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { CLAUDE_LEVEL_LABELS, MAX_CLAUDE_LEVEL, claudeLevelUpCost } from './claude';
 import { FRAGMENTS } from './fragments';
 import { getSeedFromLocation } from './prng';
 import { UPGRADES } from './upgrades';
@@ -16,11 +17,16 @@ function App() {
     fragments,
     offlineSummary,
     metaCurrency,
+    tokens,
+    claudeLevel,
     playCell,
     purchaseUpgrade,
     prestige,
+    purchaseClaudeLevel,
   } = useGame(seed);
   const [confirmingPrestige, setConfirmingPrestige] = useState(false);
+  const claudeOwned = Boolean(upgrades.autoplay);
+  const nextClaudeLevelCost = claudeLevelUpCost(claudeLevel);
 
   return (
     <main>
@@ -34,6 +40,9 @@ function App() {
       </p>
       <p data-testid="meta-currency-label">
         Sparks <span data-testid="meta-currency">{metaCurrency}</span>
+      </p>
+      <p data-testid="token-count-label">
+        Tokens <span data-testid="token-count">{tokens}</span>
       </p>
       <p data-testid="status">{status}</p>
       <div
@@ -72,6 +81,24 @@ function App() {
           );
         })}
       </div>
+      {claudeOwned && (
+        <div data-testid="claude-panel">
+          <p data-testid="claude-level-label">
+            {CLAUDE_LEVEL_LABELS[claudeLevel]} (level <span data-testid="claude-level">{claudeLevel}</span>)
+          </p>
+          {claudeLevel < MAX_CLAUDE_LEVEL ? (
+            <button
+              data-testid="claude-level-up"
+              disabled={nextClaudeLevelCost === null || tokens < nextClaudeLevelCost}
+              onClick={() => purchaseClaudeLevel()}
+            >
+              Upgrade {CLAUDE_LEVEL_LABELS[claudeLevel + 1]} ({nextClaudeLevelCost} tokens)
+            </button>
+          ) : (
+            <p data-testid="claude-level-maxed">Claude has learned all it can.</p>
+          )}
+        </div>
+      )}
       <ul data-testid="fragment-log">
         {fragments.map((id) => {
           const fragment = FRAGMENTS.find((f) => f.id === id);

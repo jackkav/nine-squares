@@ -1,5 +1,5 @@
 import type { Mark } from './board';
-import { wouldWin } from './board';
+import { emptyIndices, wouldWin } from './board';
 import { pick, type Rng } from './prng';
 
 /**
@@ -8,10 +8,7 @@ import { pick, type Rng } from './prng';
  * keeps the opponent beatable while still requiring the player to think.
  */
 export function computeOpponentMove(cells: Mark[], size: number, rng: Rng): number {
-  const empty: number[] = [];
-  for (let i = 0; i < cells.length; i++) {
-    if (cells[i] === null) empty.push(i);
-  }
+  const empty = emptyIndices(cells);
 
   for (const i of empty) {
     if (wouldWin(cells, i, 'O', size)) return i;
