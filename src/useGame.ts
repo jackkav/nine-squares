@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { checkWinner, emptyBoard, isDraw, type Mark } from './board';
 import { selectAutoMove } from './autoplay';
 import { claudeLevelUpCost, MAX_CLAUDE_LEVEL, TOKENS_PER_AUTO_RESOLUTION } from './claude';
+import { cashPrizeForLevel, competitionLevelUpCost, MAX_COMPETITION_LEVEL } from './competition';
 import { getDebugListParam, getDebugNumberParam } from './debugParams';
 import { echoesForOutcome, type Outcome } from './echoes';
 import { fragmentsForLoopCount, mergeFragments } from './fragments';
@@ -32,6 +33,8 @@ export interface GameState {
   metaCurrency: number;
   tokens: number;
   claudeLevel: number;
+  competitionLevel: number;
+  cash: number;
 }
 
 type MoveSource = 'manual' | 'auto';
@@ -54,7 +57,7 @@ function applyMove(state: GameState, index: number, rng: Rng, source: MoveSource
     return resolved({ ...state, cells }, 'Nothing yields. A draw.', 'draw', source);
   }
 
-  const opponentMove = computeOpponentMove(cells, state.size, rng);
+  const opponentMove = computeOpponentMove(cells, state.size, rng, state.competitionLevel);
   cells = [...cells];
   cells[opponentMove] = 'O';
 
@@ -96,6 +99,8 @@ export function useGame(seed: string) {
       metaCurrency: getDebugNumberParam(search, 'sparks', 0),
       tokens: getDebugNumberParam(search, 'tokens', 0),
       claudeLevel: getDebugNumberParam(search, 'claudeLevel', 0),
+      competitionLevel: getDebugNumberParam(search, 'competitionLevel', 0),
+      cash: getDebugNumberParam(search, 'cash', 0),
     };
   });
 
@@ -124,6 +129,8 @@ export function useGame(seed: string) {
       metaCurrency: state.metaCurrency,
       tokens: state.tokens,
       claudeLevel: state.claudeLevel,
+      competitionLevel: state.competitionLevel,
+      cash: state.cash,
     };
     writeSave(persisted);
   }, [
@@ -136,6 +143,8 @@ export function useGame(seed: string) {
     state.metaCurrency,
     state.tokens,
     state.claudeLevel,
+    state.competitionLevel,
+    state.cash,
   ]);
 
   // setState here is called with an already-computed value, never a
@@ -172,11 +181,14 @@ export function useGame(seed: string) {
       loopCount: 0,
       echoes: 0,
       upgrades: {},
-      // Claude is bought and leveled with run-scoped currencies (echoes,
-      // tokens), so it resets alongside them rather than with fragments
-      // and metaCurrency, which are the only things meta-scoped here.
+      // Claude and competition are both bought and leveled with run-scoped
+      // currencies (echoes, tokens, cash), so they reset alongside them
+      // rather than with fragments and metaCurrency, which are the only
+      // things meta-scoped here.
       tokens: 0,
       claudeLevel: 0,
+      competitionLevel: 0,
+      cash: 0,
       metaCurrency: state.metaCurrency + gain,
     });
   }
@@ -186,6 +198,13 @@ export function useGame(seed: string) {
     const cost = claudeLevelUpCost(state.claudeLevel);
     if (cost === null || state.tokens < cost) return;
     setState({ ...state, tokens: state.tokens - cost, claudeLevel: state.claudeLevel + 1 });
+  }
+
+  function purchaseCompetitionLevel() {
+    if (state.competitionLevel >= MAX_COMPETITION_LEVEL) return;
+    const cost = competitionLevelUpCost(state.competitionLevel);
+    if (cost === null || state.echoes < cost) return;
+    setState({ ...state, echoes: state.echoes - cost, competitionLevel: state.competitionLevel + 1 });
   }
 
   // Claude: plays a move on a timer once owned, using selectAutoMove tuned
@@ -224,7 +243,14 @@ export function useGame(seed: string) {
     writeLastSeen(now);
   }, []);
 
-  return { ...state, playCell, purchaseUpgrade, prestige, purchaseClaudeLevel };
+  return {
+    ...state,
+    playCell,
+    purchaseUpgrade,
+    prestige,
+    purchaseClaudeLevel,
+    purchaseCompetitionLevel,
+  };
 }
 
 function resolved(prev: GameState, status: string, outcome: Outcome, source: MoveSource): GameState {
@@ -239,6 +265,9 @@ function resolved(prev: GameState, status: string, outcome: Outcome, source: Mov
     // Tokens are a byproduct of Claude's own play, not the player's — they
     // fund leveling Claude up further, independent of manual sessions.
     tokens: prev.tokens + (source === 'auto' ? TOKENS_PER_AUTO_RESOLUTION : 0),
+    // Cash pays out for a win regardless of who played it (manual or
+    // Claude) — competing is the point, not who does the clicking.
+    cash: prev.cash + (outcome === 'win' ? cashPrizeForLevel(prev.competitionLevel) : 0),
     fragments: mergeFragments(prev.fragments, loopCount),
   };
 }

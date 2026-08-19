@@ -1,5 +1,11 @@
 import { useMemo, useState } from 'react';
 import { CLAUDE_LEVEL_LABELS, MAX_CLAUDE_LEVEL, claudeLevelUpCost } from './claude';
+import {
+  cashPrizeForLevel,
+  competitionLevelUpCost,
+  COMPETITION_LEVEL_LABELS,
+  MAX_COMPETITION_LEVEL,
+} from './competition';
 import { FRAGMENTS } from './fragments';
 import { getSeedFromLocation } from './prng';
 import { UPGRADES } from './upgrades';
@@ -19,14 +25,18 @@ function App() {
     metaCurrency,
     tokens,
     claudeLevel,
+    competitionLevel,
+    cash,
     playCell,
     purchaseUpgrade,
     prestige,
     purchaseClaudeLevel,
+    purchaseCompetitionLevel,
   } = useGame(seed);
   const [confirmingPrestige, setConfirmingPrestige] = useState(false);
   const claudeOwned = Boolean(upgrades.autoplay);
   const nextClaudeLevelCost = claudeLevelUpCost(claudeLevel);
+  const nextCompetitionLevelCost = competitionLevelUpCost(competitionLevel);
 
   return (
     <main>
@@ -43,6 +53,9 @@ function App() {
       </p>
       <p data-testid="token-count-label">
         Tokens <span data-testid="token-count">{tokens}</span>
+      </p>
+      <p data-testid="cash-count-label">
+        Cash <span data-testid="cash-count">{cash}</span>
       </p>
       <p data-testid="status">{status}</p>
       <div
@@ -99,6 +112,24 @@ function App() {
           )}
         </div>
       )}
+      <div data-testid="competition-panel">
+        <p data-testid="competition-level-label">
+          {COMPETITION_LEVEL_LABELS[competitionLevel]} (level{' '}
+          <span data-testid="competition-level">{competitionLevel}</span>)
+          {competitionLevel > 0 && ` — wins pay ${cashPrizeForLevel(competitionLevel)} cash`}
+        </p>
+        {competitionLevel < MAX_COMPETITION_LEVEL ? (
+          <button
+            data-testid="competition-level-up"
+            disabled={nextCompetitionLevelCost === null || echoes < nextCompetitionLevelCost}
+            onClick={() => purchaseCompetitionLevel()}
+          >
+            Enter {COMPETITION_LEVEL_LABELS[competitionLevel + 1]} ({nextCompetitionLevelCost} echoes)
+          </button>
+        ) : (
+          <p data-testid="competition-level-maxed">You have reached the top tier of competition.</p>
+        )}
+      </div>
       <ul data-testid="fragment-log">
         {fragments.map((id) => {
           const fragment = FRAGMENTS.find((f) => f.id === id);

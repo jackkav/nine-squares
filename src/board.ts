@@ -59,3 +59,12 @@ export function countThreatsAfter(cells: Mark[], index: number, mark: 'X' | 'O',
   }
   return count;
 }
+
+/** The single center cell on an odd-sized board, or -1 if there isn't one. */
+export function centerIndex(size: number): number {
+  return size % 2 === 1 ? Math.floor((size * size) / 2) : -1;
+}
+
+export function cornerIndices(size: number): number[] {
+  return [0, size - 1, size * (size - 1), size * size - 1];
+}

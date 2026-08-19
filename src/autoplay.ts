@@ -1,7 +1,11 @@
-import { countThreatsAfter, emptyIndices, wouldWin, type Mark } from './board';
-
-const CENTER_INDEX = (size: number) => (size % 2 === 1 ? Math.floor((size * size) / 2) : -1);
-const CORNER_INDICES = (size: number) => [0, size - 1, size * (size - 1), size * size - 1];
+import {
+  centerIndex,
+  cornerIndices,
+  countThreatsAfter,
+  emptyIndices,
+  wouldWin,
+  type Mark,
+} from './board';
 
 /**
  * Chooses Claude's move against the built-in opponent (win > block >
@@ -28,9 +32,9 @@ export function selectAutoMove(cells: Mark[], size: number, claudeLevel: number)
     for (const i of empty) {
       if (countThreatsAfter(cells, i, 'X', size) >= 2) return i;
     }
-    const center = CENTER_INDEX(size);
+    const center = centerIndex(size);
     if (center >= 0 && cells[center] === null) return center;
-    for (const i of CORNER_INDICES(size)) {
+    for (const i of cornerIndices(size)) {
       if (cells[i] === null) return i;
     }
   }
