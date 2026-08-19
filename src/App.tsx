@@ -85,12 +85,12 @@ function App() {
       <div data-testid="prestige">
         {!confirmingPrestige && (
           <button data-testid="prestige-button" onClick={() => setConfirmingPrestige(true)}>
-            Let go
+            Concede the loop
           </button>
         )}
         {confirmingPrestige && (
           <>
-            <p>Reset echoes, upgrades, and the board for a permanent yield multiplier?</p>
+            <p>Concede this run — echoes, upgrades, and the board reset — for a permanent yield multiplier?</p>
             <button
               data-testid="prestige-confirm"
               onClick={() => {
@@ -98,10 +98,10 @@ function App() {
                 setConfirmingPrestige(false);
               }}
             >
-              Confirm
+              Concede
             </button>
             <button data-testid="prestige-cancel" onClick={() => setConfirmingPrestige(false)}>
-              Cancel
+              Stay in the loop
             </button>
           </>
         )}
