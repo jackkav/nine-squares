@@ -6,6 +6,7 @@ import {
   COMPETITION_LEVEL_LABELS,
   MAX_COMPETITION_LEVEL,
 } from './competition';
+import { CASH_EXCHANGE_COST, CASH_EXCHANGE_TOKENS } from './exchange';
 import { FRAGMENTS } from './fragments';
 import { getSeedFromLocation } from './prng';
 import { PRESTIGE_UPGRADES } from './prestigeShop';
@@ -35,6 +36,7 @@ function App() {
     purchaseClaudeLevel,
     purchaseCompetitionLevel,
     purchasePrestigeUpgrade,
+    exchangeCashForTokens,
   } = useGame(seed);
   const [confirmingPrestige, setConfirmingPrestige] = useState(false);
   const claudeOwned = Boolean(upgrades.autoplay);
@@ -132,6 +134,13 @@ function App() {
         ) : (
           <p data-testid="competition-level-maxed">You have reached the top tier of competition.</p>
         )}
+        <button
+          data-testid="exchange-cash-for-tokens"
+          disabled={cash < CASH_EXCHANGE_COST}
+          onClick={() => exchangeCashForTokens()}
+        >
+          Exchange {CASH_EXCHANGE_COST} cash → {CASH_EXCHANGE_TOKENS} tokens
+        </button>
       </div>
       <ul data-testid="fragment-log">
         {fragments.map((id) => {

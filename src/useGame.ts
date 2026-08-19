@@ -10,6 +10,7 @@ import {
 import { cashPrizeForLevel, competitionLevelUpCost, MAX_COMPETITION_LEVEL } from './competition';
 import { getDebugListParam, getDebugNumberParam } from './debugParams';
 import { echoesForOutcome, type Outcome } from './echoes';
+import { CASH_EXCHANGE_COST, CASH_EXCHANGE_TOKENS } from './exchange';
 import { fragmentsForLoopCount, mergeFragments } from './fragments';
 import {
   computeOfflineCredit,
@@ -225,6 +226,15 @@ export function useGame(seed: string) {
     });
   }
 
+  function exchangeCashForTokens() {
+    if (state.cash < CASH_EXCHANGE_COST) return;
+    setState({
+      ...state,
+      cash: state.cash - CASH_EXCHANGE_COST,
+      tokens: state.tokens + CASH_EXCHANGE_TOKENS,
+    });
+  }
+
   function purchaseClaudeLevel() {
     if (!state.upgrades.autoplay || state.claudeLevel >= MAX_CLAUDE_LEVEL) return;
     const cost = claudeLevelUpCost(state.claudeLevel);
@@ -286,6 +296,7 @@ export function useGame(seed: string) {
     purchaseClaudeLevel,
     purchaseCompetitionLevel,
     purchasePrestigeUpgrade,
+    exchangeCashForTokens,
   };
 }
 

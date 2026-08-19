@@ -143,7 +143,8 @@ h1 {
   margin-top: 16px;
 }
 
-[data-testid='competition-level-up'] {
+[data-testid='competition-level-up'],
+[data-testid='exchange-cash-for-tokens'] {
   font: inherit;
   padding: 8px 14px;
   background: var(--cell-bg);
@@ -153,12 +154,14 @@ h1 {
   cursor: pointer;
 }
 
-[data-testid='competition-level-up']:focus-visible {
+[data-testid='competition-level-up']:focus-visible,
+[data-testid='exchange-cash-for-tokens']:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
 
-[data-testid='competition-level-up']:disabled {
+[data-testid='competition-level-up']:disabled,
+[data-testid='exchange-cash-for-tokens']:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
